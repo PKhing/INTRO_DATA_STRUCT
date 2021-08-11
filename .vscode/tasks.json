@@ -19,13 +19,22 @@
       "detail": "compiler: C:\\MinGW\\bin\\g++.exe"
     },
     {
+      "label": "Run",
+      "command": "${fileDirname}\\${fileBasenameNoExtension}.exe"
+    },
+    {
+      "label": "Clean",
+      "type": "shell",
+      "command": "rm ${fileDirname}\\${fileBasenameNoExtension}.exe"
+    },
+    {
       "label": "Build and Run",
-      "command": "${fileDirname}\\${fileBasenameNoExtension}.exe",
       "group": {
         "kind": "build",
         "isDefault": true
       },
-      "dependsOn": ["Build"]
+      "dependsOrder": "sequence",
+      "dependsOn": ["Build", "Run", "Clean"]
     }
   ]
 }
