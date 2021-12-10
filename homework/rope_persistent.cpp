@@ -18,9 +18,34 @@ class rope {
         : str(""), weight(weight), left(left), right(right) {}
     node() : str(""), weight(0), left(NULL), right(NULL) {}
   };
+  class versionController {
+    friend class rope;
+    vector<node*> versions;
+    size_t currentVersion;
+
+   public:
+    versionController(node* mRoot) : currentVersion(0) {
+      versions.push_back(mRoot);
+    }
+    //-------------------Operations----------------------
+    node* undo() {
+      if (currentVersion > 0) currentVersion--;
+      return versions[currentVersion];
+    }
+    node* redo() {
+      if (currentVersion < versions.size() - 1) currentVersion++;
+      return versions[currentVersion];
+    }
+    node* saveVersion(node* mRoot) {
+      versions.resize(currentVersion + 1);
+      versions.push_back(mRoot);
+      currentVersion++;
+    }
+  };
 
  protected:
   node* mRoot;
+  versionController version;
 
   //------------------------Merge--------------------------------
   node* merge(node* left, node* right) {
@@ -82,15 +107,27 @@ class rope {
 
  public:
   //------------------Constructor----------------------
-  rope() : mRoot(new node()) {}
-  rope(string s) : mRoot(new node(s)) {}
+  rope() : mRoot(new node()), version(mRoot) {}
+  rope(string s) : mRoot(new node(s)), version(mRoot) {}
   //------------------Operations-----------------------
-  void concat(rope r) { mRoot = merge(mRoot, r.mRoot); }
+  void concat(rope r) {
+    mRoot = merge(mRoot, r.mRoot);
+    version.saveVersion(mRoot);
+  }
 
   void insert(size_t index, rope r) {
     node *left = NULL, *right = NULL;
     split(mRoot, left, right, index);
     mRoot = merge(merge(left, r.mRoot), right);
+    version.saveVersion(mRoot);
+  }
+
+  void erase(size_t st, size_t ed) {
+    node *left, *mid, *right;
+    split(mRoot, left, right, ed);
+    split(left, left, mid, st);
+    mRoot = merge(left, right);
+    version.saveVersion(mRoot);
   }
 
   char index(size_t index) { return findIndex(mRoot, index); }
@@ -99,19 +136,8 @@ class rope {
     rope r;
     node* tmp;
     split(mRoot, r.mRoot, tmp, ed);
-    cout << endl;
-    cout << endl;
-    printNode(r.mRoot);
-    cout << endl;
     split(r.mRoot, tmp, r.mRoot, st);
     return r;
-  }
-
-  void erase(size_t st, size_t ed) {
-    node *left, *mid, *right;
-    split(mRoot, left, right, ed);
-    split(left, left, mid, st);
-    mRoot = merge(left, right);
   }
 
   //-----------------------Utils------------------------
@@ -122,19 +148,40 @@ class rope {
   }
   size_t length() { return length(mRoot); }
   void print() { printNode(mRoot); }
+
+  //------------------------Persistent-------------------
+  void undo() { mRoot = version.undo(); }
+  void redo() { mRoot = version.redo(); }
 };
 
 int main() {
   rope s1;
-  rope s2("aa");
-
+  s1.concat(rope("1234567890"));
+  s1.erase(2, 3);
+  s1.erase(4, 5);
   cout << s1.toString() << endl;
-  s1.concat(s2);
-  s2.insert(0, rope("asdfas"));
-
+  s1.undo();
   cout << s1.toString() << endl;
-  s1.print();
-  cout << s2.toString() << endl;
-  s2.substring(0, 3).print();
-  cout << s2.substring(0, 3).toString() << endl;
+  s1.undo();
+  cout << s1.toString() << endl;
+  s1.redo();
+  cout << s1.toString() << endl;
+  s1.concat(rope("bbb"));
+  cout << s1.toString() << endl;
+  s1.redo();
+  cout << s1.toString() << endl;
+  s1.undo();
+  cout << s1.toString() << endl;
+  s1.redo();
+  cout << s1.toString() << endl;
+  s1.undo();
+  cout << s1.toString() << endl;
+  s1.undo();
+  cout << s1.toString() << endl;
+  s1.undo();
+  cout << s1.toString() << endl;
+  s1.undo();
+  cout << s1.toString() << endl;
+  s1.undo();
+  cout << s1.toString() << endl;
 }
