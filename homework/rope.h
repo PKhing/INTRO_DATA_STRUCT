@@ -1,8 +1,16 @@
-#include <bits/stdc++.h>
-using namespace std;
+#ifndef _CP_MAP_BST_INCLUDED_
+#define _CP_MAP_BST_INCLUDED_
 
+#include <vector>
+#include <iostream>
+#include <string>
+#include <queue>
+
+namespace CP {
+
+// fibonacci sequence for rope rebalancing
 class fibonacciSequence {
-  vector<size_t> sequence;
+  std::vector<size_t> sequence;
 
  public:
   fibonacciSequence() {
@@ -44,13 +52,13 @@ class rope {
 
    protected:
     node *left, *right;
-    string str;
+    std::string str;
     size_t weight;
     char depth;
 
    public:
     //-----------------------Constructor---------------------------------
-    node(string str)
+    node(std::string str)
         : str(str), weight(str.length()), left(NULL), right(NULL), depth(0) {}
     node(node* left, node* right, size_t weight)
         : str(""), weight(weight), left(left), right(right), depth(0) {}
@@ -62,12 +70,12 @@ class rope {
       if (!left && !right)
         depth = 0;
       else
-        depth = max(left ? left->depth : 0, right ? right->depth : 0) + 1;
+        depth = std::max(left ? left->depth : 0, right ? right->depth : 0) + 1;
     }
   };
   class versionController {
     friend class rope;
-    vector<node*> versions;
+    std::vector<node*> versions;
     size_t currentVersion;
 
    public:
@@ -95,8 +103,8 @@ class rope {
   node* mRoot;
   versionController version;
 
-  //------------------------Merge--------------------------------
-  node* merge(node* left, node* right) {
+  //------------------------Concat--------------------------------
+  node* concat(node* left, node* right) {
     if (!left) return right;
     if (!right) return left;
     node* tmp = new node(left, right, length(left));
@@ -107,10 +115,9 @@ class rope {
   //-------------------------Split-------------------------------
   void split(node* ptr, node*& left, node*& right, size_t index) {
     if (ptr->isLeaf()) {
-      splitNode(ptr, left, right, index);
-      return;
-    }
-    if (index < ptr->weight) {
+      left = new node(ptr->str.substr(0, index));
+      right = new node(ptr->str.substr(index));
+    } else if (index < ptr->weight) {
       right = new node(NULL, ptr->right, ptr->weight - index);
       split(ptr->left, left, right->left, index);
       right->updateDepth();
@@ -121,41 +128,41 @@ class rope {
     }
   }
 
-  void splitNode(node* ptr, node*& left, node*& right, size_t index) {
-    left = new node(ptr->str.substr(0, index));
-    right = new node(ptr->str.substr(index));
-  }
   //-------------------------Rebalance---------------------------
-  typedef priority_queue<pair<int, node*>, vector<pair<int, node*>>,
-                         greater<pair<int, node*>>>
+  typedef std::priority_queue<std::pair<int, node*>,
+                              std::vector<std::pair<int, node*>>,
+                              std::greater<std::pair<int, node*>>>
       rebalancepq;
+
   void rebalance() {
     if (length() >= fibo.get(mRoot->depth + 2)) return;
     rebalancepq pq;
     rebalance(pq, mRoot);
     mRoot = NULL;
     while (!pq.empty()) {
-      mRoot = merge(pq.top().second, mRoot);
+      mRoot = concat(pq.top().second, mRoot);
       pq.pop();
     }
     if (!mRoot) mRoot = new node();
   }
+
   void rebalance(rebalancepq& pq, node* ptr) {
     if (!ptr) return;
     if (ptr->isLeaf()) {
       if (ptr->weight == 0) return;
       int index = fibo.getIndex(ptr->weight);
       node* tmp = NULL;
-      while (!pq.empty() && pq.top().first < index)
-        tmp = merge(pq.top().second, tmp), pq.pop();
-      ptr = merge(tmp, ptr);
+      while (!pq.empty() && pq.top().first < index) {
+        tmp = concat(pq.top().second, tmp);
+        pq.pop();
+      }
+      ptr = concat(tmp, ptr);
       while (!pq.empty() && pq.top().first == index) {
-        ptr = merge(pq.top().second, ptr);
+        ptr = concat(pq.top().second, ptr);
         index++;
         pq.pop();
       }
-
-      pq.push(make_pair(index, ptr));
+      pq.push(std::make_pair(index, ptr));
       return;
     }
     rebalance(pq, ptr->left);
@@ -163,7 +170,7 @@ class rope {
   }
 
   // --------------------------Utils--------------------------
-  void toString(node* ptr, string& str) {
+  void toString(node* ptr, std::string& str) {
     if (!ptr) return;
     if (ptr->isLeaf()) {
       str.append(ptr->str);
@@ -178,12 +185,12 @@ class rope {
     printNode(ptr->right, depth + 1);
     for (int i = 0; i < depth; i++) printf("==");
     printf("<%d/%d>", ptr->weight, ptr->depth);
-    cout << ptr->str << endl;
+    std::cout << ptr->str << std::endl;
     printNode(ptr->left, depth + 1);
   }
 
   size_t length(node* ptr) {
-    if (!ptr->right) return ptr->weight;
+    if (!ptr) return 0;
     return ptr->weight + length(ptr->right);
   }
 
@@ -198,10 +205,10 @@ class rope {
  public:
   //------------------Constructor----------------------
   rope() : mRoot(new node()), version(mRoot) {}
-  rope(string s) : mRoot(new node(s)), version(mRoot) {}
+  rope(std::string s) : mRoot(new node(s)), version(mRoot) {}
   //------------------Operations-----------------------
   void concat(rope r) {
-    mRoot = merge(mRoot, r.mRoot);
+    mRoot = concat(mRoot, r.mRoot);
     rebalance();
     version.saveVersion(mRoot);
   }
@@ -209,7 +216,7 @@ class rope {
   void insert(size_t index, rope r) {
     node *left = NULL, *right = NULL;
     split(mRoot, left, right, index);
-    mRoot = merge(merge(left, r.mRoot), right);
+    mRoot = concat(concat(left, r.mRoot), right);
     rebalance();
     version.saveVersion(mRoot);
   }
@@ -218,7 +225,7 @@ class rope {
     node *left, *mid, *right;
     split(mRoot, left, right, ed);
     split(left, left, mid, st);
-    mRoot = merge(left, right);
+    mRoot = concat(left, right);
     rebalance();
     version.saveVersion(mRoot);
   }
@@ -234,36 +241,20 @@ class rope {
     return r;
   }
 
-  //-----------------------Utils------------------------
-  string toString() {
-    string str;
+  std::string toString() {
+    std::string str;
     toString(mRoot, str);
     return str;
   }
+
   size_t length() { return length(mRoot); }
+
   void print() { printNode(mRoot); }
 
-  //------------------------Persistent-------------------
+  //----------------------Persistent-------------------
   void undo() { mRoot = version.undo(); }
   void redo() { mRoot = version.redo(); }
 };
+}  // namespace CP
 
-int main() {
-  rope s1;
-  s1.concat(rope("1"));
-  s1.concat(rope("234"));
-  s1.concat(rope("5"));
-  s1.concat(rope("6"));
-  s1.concat(rope("78"));
-  s1.concat(rope("91011"));
-  s1.concat(rope("1213"));
-  s1.concat(rope("1"));
-  s1.concat(rope("234"));
-  s1.concat(rope("5"));
-  s1.concat(rope("6"));
-  s1.concat(rope("78"));
-  s1.concat(rope("91011"));
-  s1.concat(rope("1213"));
-  cout << s1.toString() << endl;
-  cout << s1.substring(10, 20).toString();
-}
+#endif
